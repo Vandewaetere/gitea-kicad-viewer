@@ -54,6 +54,12 @@ Restart Gitea. With the official Docker image `$GITEA_CUSTOM` is `/data/gitea`. 
 Large boards: Gitea does not render files above `[ui] MAX_DISPLAY_FILE_SIZE` (default 8 MiB). Raise it if your
 `.kicad_pcb` files are bigger. Opening the `.kicad_pro` with `allow-same-origin` loads the PCB directly and is not limited.
 
+## Example project
+
+[`examples/rp2350-minimal/`](examples/rp2350-minimal/) holds a small, validated, MIT-licensed KiCad 10 project to try
+the viewer with: Raspberry Pi's official RP2350A Minimal Design (where it comes from, license and validation are in its
+[README](examples/rp2350-minimal/README.md)). Push it to a repository on your Gitea and open the `.kicad_pro`.
+
 ## Test
 
 ```sh
@@ -61,7 +67,7 @@ Large boards: Gitea does not render files above `[ui] MAX_DISPLAY_FILE_SIZE` (de
 ```
 
 Starts a throwaway Gitea (official image) on an internal Docker network, with this viewer and gitea-board-badges
-installed, pushes ecad-viewer's demo project to a private repository and checks the result in Chromium (Microsoft's
+installed, pushes ecad-viewer's demo project and the example project to a private repository and checks the result in Chromium (Microsoft's
 official Playwright image), with and without `allow-same-origin`. Nothing touches any other Gitea.
 
 ## Credits
@@ -70,9 +76,11 @@ This project is built on the work of others, thank you:
 
 - **[ecad-viewer](https://github.com/Huaqiu-Electronics/ecad-viewer)** by **Huaqiu Electronics** (MIT): the viewer this project is based on.
 - **[KiCanvas](https://github.com/theacodes/kicanvas)** by **Thea Flowers** (MIT): the KiCad web viewer ecad-viewer itself is based on.
+- **[Raspberry Pi Ltd](https://www.raspberrypi.com)** (MIT): the example project in `examples/rp2350-minimal/`.
 - **[three-gltf-viewer](https://github.com/donmccurdy/three-gltf-viewer)** by **Don McCurdy** (MIT): used by ecad-viewer for the 3D view.
 
-Their license notices are kept with the code taken from them; `build.sh` copies ecad-viewer's license next to the
+Inside Gitea the loader hides ecad-viewer's logo in the corner of the viewer; the credits are here instead. Their
+license notices are kept with the code taken from them; `build.sh` copies ecad-viewer's license next to the
 built files. ecad-viewer's bundles also contain [Comlink](https://github.com/GoogleChromeLabs/comlink) (Apache-2.0).
 
 ## License
