@@ -15,6 +15,10 @@ reference design that goes with their guide [Hardware design with RP2350](https:
 - Files: the `.kicad_pro`, `.kicad_sch` and `.kicad_pcb` from the zip, **unchanged**. Left out: the PDF schematic and
   the BOM spreadsheet, which are also in the zip.
 - Format: KiCad 10 (`generator_version "10.0"`).
+- Added by us: `RPI-RP2350A-MINIMAL_R4-S1.glb`, the 3D model of the board for the viewer's 3D tab. Exported from the
+  unchanged `.kicad_pcb` with KiCad 10.0.7:
+  `kicad-cli pcb export glb --include-tracks --include-pads --include-silkscreen --include-soldermask --subst-models`.
+  The component models come from the board file itself (Raspberry Pi embedded them), so the same MIT license applies.
 
 Raspberry Pi provides the design for guidance only and without guarantee (see the disclaimer in LICENSE.txt). It is
 not affiliated with this project.
