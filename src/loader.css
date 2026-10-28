@@ -1,0 +1,3 @@
+html,body{margin:0;height:100%}
+ecad-viewer{display:block;width:100%;height:80vh;min-height:480px}
+.kv-note{font:13px/1.4 system-ui,sans-serif;color:#555;padding:4px 8px}
