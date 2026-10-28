@@ -11,7 +11,8 @@
 #     - the viewer makes no requests outside Gitea.
 #
 # HOW
-#   1. build.sh must have run (dist/). The test project is the "video" demo that ships with ecad-viewer (dist/.src).
+#   1. build.sh must have run (dist/). Test projects: the "video" demo that ships with ecad-viewer (dist/.src, 9 sheets)
+#      and examples/rp2350-minimal (Raspberry Pi's RP2350A Minimal Design, KiCad 10, in a sub-folder).
 #   2. Start a throwaway Gitea (official image gitea/gitea, GITEA_IMAGE overrides) on its own Docker network, with the
 #      viewer installed as described in the README, and push the test project to a private repository.
 #   3. Open the files in Chromium (Microsoft's official Playwright image) and check the result (test/browser.mjs).
@@ -42,6 +43,8 @@ rm -rf "$WORK" && mkdir -p "$WORK/project" "$WORK/pw" "$DIR/test/out"
 # The test project: ecad-viewer's own demo, unpacked from the pinned source.
 python3 -c 'import sys,zipfile; zipfile.ZipFile(sys.argv[1]).extractall(sys.argv[2])' \
   "$DIR/dist/.src/ecad-viewer/packages/ecad-viewer-app/static/video.zip" "$WORK/project"
+# Plus our own example project (examples/), in a sub-folder like in a real repository.
+mkdir -p "$WORK/project/examples" && cp -r "$DIR/examples/rp2350-minimal" "$WORK/project/examples/"
 
 # gitea-board-badges next to it.
 if [ -n "$BADGES" ]; then cp "$BADGES" "$WORK/footer.tmpl"; else
@@ -87,7 +90,7 @@ j -X POST $A/projects -d '{"title":"demo","template_type":"basic_kanban"}'
 j -X POST $A/projects/1/columns/2/issues/1
 IN
 
-  docker run --rm --network "$NET" -e BASE="http://$NAME:3000" -e MODE="$1" -v "$WORK/pw:/pw:ro" -v "$DIR/test/out:/out" \
+  docker run --rm --network "$NET" -e BASE="http://$NAME:3000" -e MODE="$1" -e DEBUG="$DEBUG" -v "$WORK/pw:/pw:ro" -v "$DIR/test/out:/out" \
     -w /pw "$PW" node browser.mjs
   docker rm -f "$NAME" >/dev/null
 }

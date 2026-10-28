@@ -2,8 +2,6 @@
 // https://github.com/Vandewaetere/gitea-kicad-viewer — MIT
 (function () {
   "use strict";
-  // The ecad-viewer logo in the corner links here: credit to the authors of the viewer.
-  window.ai_url = "https://github.com/Huaqiu-Electronics/ecad-viewer";
 
   // In Gitea's default sandbox (no allow-same-origin) localStorage throws; give the viewer an in-memory one.
   var sameOrigin = true;
@@ -21,10 +19,9 @@
   }
 
   var cfg = JSON.parse(document.getElementById("kv-config").textContent);
-  var renderPrefix = cfg.src.replace(/\/src\//, "/render/");
-  var path = decodeURIComponent(location.pathname.slice(renderPrefix.length + 1));
-  var dir = path.indexOf("/") >= 0 ? path.slice(0, path.lastIndexOf("/")) : "";
-  var name = path.slice(path.lastIndexOf("/") + 1);
+  // Gitea passes the prefixes of the folder the file is in (e.g. /owner/repo/raw/branch/main/hw/board), and the
+  // render URL ends in the file name.
+  var name = decodeURIComponent(location.pathname.slice(location.pathname.lastIndexOf("/") + 1));
   var viewer = document.createElement("ecad-viewer");
 
   function addSource(url) { var s = document.createElement("ecad-source"); s.setAttribute("src", url); viewer.appendChild(s); }
@@ -36,22 +33,26 @@
     blob.setAttribute("content", new TextDecoder().decode(bytes));
     viewer.appendChild(blob);
   }
-  function rawUrl(p) { return cfg.raw + "/" + p.split("/").map(encodeURIComponent).join("/"); }
+  function dirname(p) { return p.indexOf("/") >= 0 ? p.slice(0, p.lastIndexOf("/")) : ""; }
+  function basename(p) { return p.slice(p.lastIndexOf("/") + 1); }
 
   // With allow-same-origin we may read the other files of the project (same folder) with the user's session.
-  // Gitea's API ignores the session cookie, so use the web route behind "Go to file": /<owner>/<repo>/tree-list/<ref>.
+  // Gitea's API ignores the session cookie, so use the web route behind "Go to file" (/<owner>/<repo>/tree-list/<ref>),
+  // which lists every file of the repository. The folder of our file is the one that contains a file with our name and
+  // whose path is the end of the raw prefix (the longest one, if several match).
   function project() {
-    var list = cfg.raw.replace(/\/raw\//, "/tree-list/");
-    return fetch(list, { credentials: "same-origin" }).then(function (r) {
+    return fetch(cfg.raw.replace(/\/raw\//, "/tree-list/"), { credentials: "same-origin" }).then(function (r) {
       if (!r.ok) throw new Error("tree-list " + r.status);
       return r.json();
     }).then(function (paths) {
-      var files = paths.filter(function (p) {
-        var d = p.indexOf("/") >= 0 ? p.slice(0, p.lastIndexOf("/")) : "";
-        return d === dir && /\.(kicad_sch|kicad_pcb|kicad_pro)$/.test(p);
+      var dir = null;
+      paths.forEach(function (p) {
+        var d = dirname(p);
+        if (basename(p) === name && (d === "" || cfg.raw.slice(-(d.length + 1)) === "/" + d) && (dir === null || d.length > dir.length)) dir = d;
       });
-      if (!files.length) throw new Error("no files");
-      files.forEach(function (p) { addSource(rawUrl(p)); });
+      if (dir === null) throw new Error("file not found in tree-list");
+      var files = paths.filter(function (p) { return dirname(p) === dir && /\.(kicad_sch|kicad_pcb|kicad_pro)$/.test(p); });
+      files.forEach(function (p) { addSource(cfg.raw + "/" + encodeURIComponent(basename(p))); });
     });
   }
 
@@ -80,8 +81,28 @@
   }
 
   var files = sameOrigin ? project().catch(function () { inline(); }) : Promise.resolve(inline());
+  // ecad-viewer puts its maker's logo (a link) in the bottom-left corner; we don't show it inside Gitea.
+  // The credits are in the README. The logo lives in the viewer's shadow DOM, so add a style rule there.
+  function hideLogo() {
+    var root = viewer.shadowRoot;
+    if (!root) return false;
+    if (!root.querySelector("style[data-kv]")) {
+      var st = document.createElement("style");
+      st.setAttribute("data-kv", "");
+      st.textContent = ".bottom-left-icon{display:none!important}";
+      root.appendChild(st);
+    }
+    return true;
+  }
+
   Promise.all([files, patchWorker()]).then(function () {
     document.body.appendChild(viewer);
     loadViewer();
+    var timer = setInterval(function () {
+      if (hideLogo()) {
+        clearInterval(timer);
+        new MutationObserver(hideLogo).observe(viewer.shadowRoot, { childList: true });
+      }
+    }, 50);
   });
 })();

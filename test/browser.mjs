@@ -12,6 +12,8 @@ const page = await browser.newPage({ viewport: { width: 1400, height: 1000 } });
 const outside = [], errors = [];
 page.on('request', (r) => { const u = r.url(); if (!u.startsWith(BASE) && !/^(blob|data):/.test(u)) outside.push(u); });
 page.on('pageerror', (e) => errors.push(e.message));
+if (process.env.DEBUG) page.on('console', (m) => console.log('console:', m.type(), m.text().slice(0, 300)));
+if (process.env.DEBUG) page.on('response', (r) => { if (r.status() >= 400) console.log('HTTP', r.status(), r.url()); });
 
 await page.goto(`${BASE}/user/login`);
 await page.fill('#user_name', 'tester');
@@ -23,13 +25,18 @@ await page.waitForURL(`${BASE}/`);
 async function open(file) {
   await page.goto(`${BASE}/tester/demo/src/branch/main/${file}`);
   const iframe = await page.waitForSelector('iframe', { timeout: 20000 }).catch(async (e) => {
-    await page.screenshot({ path: `/out/${MODE}-${file}-FAILED.png` });
+    await page.screenshot({ path: `/out/${MODE}-${file.split('/').pop()}-FAILED.png` });
     throw e;
   });
   const frame = await iframe.contentFrame();
   await frame.waitForSelector('ecad-viewer[loaded]', { timeout: 60000 });
   await page.waitForTimeout(2000);  // let the canvas paint before the screenshot
-  await page.screenshot({ path: `/out/${MODE}-${file}.png` });
+  await page.screenshot({ path: `/out/${MODE}-${file.split('/').pop()}.png` });
+  const logo = await frame.evaluate(() => {
+    const l = document.querySelector('ecad-viewer').shadowRoot.querySelector('.bottom-left-icon');
+    return !!l && getComputedStyle(l).display !== 'none';
+  });
+  check(!logo, `${file}: no ecad-viewer logo in the corner`);
   return frame.evaluate(() => [...document.querySelector('ecad-viewer').shadowRoot.querySelectorAll('*')]
     .map((e) => e.shadowRoot ? [...e.shadowRoot.querySelectorAll('*')] : []).flat()
     .map((e) => e.textContent.trim()).filter((t) => ['SCH', 'PCB', 'BOM'].includes(t)));
@@ -38,7 +45,14 @@ async function open(file) {
 const sheet = await open('muxdata.kicad_sch');
 check(sheet.includes('SCH'), `a single schematic opens (tabs: ${[...new Set(sheet)].join(' ')})`);
 
+const RP = 'examples/rp2350-minimal/RPI-RP2350A-MINIMAL_R4-S1';
+const rpSheet = await open(`${RP}.kicad_sch`);
+check(rpSheet.includes('SCH'), `example project: schematic opens (tabs: ${[...new Set(rpSheet)].join(' ')})`);
+
 if (MODE === 'same-origin') {
+  const rp = await open(`${RP}.kicad_pro`);
+  check(rp.includes('SCH') && rp.includes('PCB'), `example project: whole project opens (tabs: ${[...new Set(rp)].join(' ')})`);
+
   const project = await open('video.kicad_pro');
   check(project.includes('SCH') && project.includes('PCB'), `the whole project opens (tabs: ${[...new Set(project)].join(' ')})`);
 }

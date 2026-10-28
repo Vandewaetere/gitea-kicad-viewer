@@ -33,9 +33,10 @@ docker run --rm -v "$SRC:/src" -w /src "$NODE" sh -c '
   cd packages/ecad-viewer-app && npm run -s build:no-check && npm run -s build:glyph
   chown -R '"$(id -u):$(id -g)"' /src'
 
-# Collect the output.
-rm -rf "$DIR/dist/public" "$DIR/dist/kicad-viewer"
+# Collect the output. Empty the output folders instead of removing them: Gitea may have them bind-mounted, and a mount
+# of a removed folder keeps pointing at the old, now empty one.
 mkdir -p "$OUT" "$DIR/dist/kicad-viewer"
+find "$OUT" "$DIR/dist/kicad-viewer" -mindepth 1 -delete
 for f in ecad-viewer.js parser.worker.js glyph-full.js; do cp "$SRC/packages/ecad-viewer-app/build/$f" "$OUT/"; done
 cp "$DIR/src/loader.js" "$DIR/src/loader.css" "$OUT/"
 cp "$DIR/src/render.sh" "$DIR/dist/kicad-viewer/"
