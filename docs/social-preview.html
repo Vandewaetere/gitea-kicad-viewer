@@ -1,0 +1,26 @@
+<!doctype html>
+<!-- Social preview card for GitHub (Settings -> Social preview), 1280x640. Rendered to docs/social-preview.png by
+     docs/make-social-preview.sh from the screenshots in docs/screenshots/ (made by test/test.sh). -->
+<html><head><meta charset="utf-8"><style>
+  html, body { margin: 0; width: 1280px; height: 640px; font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+  body { background: #1f2937; color: #f9fafb; display: flex; align-items: center; gap: 40px; padding: 0 56px; box-sizing: border-box; overflow: hidden; }
+  .text { flex: 0 0 470px; }
+  h1 { font-size: 44px; margin: 0 0 20px; letter-spacing: -1px; white-space: nowrap; }
+  p { font-size: 27px; line-height: 1.4; margin: 0 0 26px; color: #d1d5db; }
+  .tabs span { display: inline-block; font-size: 22px; font-weight: 600; padding: 6px 14px; border-radius: 6px; margin: 0 8px 10px 0; background: #374151; }
+  .tabs span.on { background: #6b7280; }
+  .shots { position: relative; flex: 1; height: 500px; }
+  .shots img { position: absolute; border-radius: 12px; box-shadow: 0 12px 40px rgba(0,0,0,.55); }
+  .pcb { width: 560px; left: 0; top: 0; }
+  .d3 { width: 470px; right: -20px; bottom: 0; }
+</style></head><body>
+  <div class="text">
+    <h1>gitea-kicad-viewer</h1>
+    <p>Browse KiCad schematics, PCBs, 3D boards and BOMs right inside Gitea.</p>
+    <div class="tabs"><span>SCH</span><span class="on">PCB</span><span>3D</span><span>BOM</span></div>
+  </div>
+  <div class="shots">
+    <img class="pcb" src="screenshots/pcb.png" alt="">
+    <img class="d3" src="screenshots/3d.png" alt="">
+  </div>
+</body></html>
