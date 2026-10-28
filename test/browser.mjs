@@ -32,6 +32,8 @@ async function open(file) {
   await frame.waitForSelector('ecad-viewer[loaded]', { timeout: 60000 });
   await page.waitForTimeout(2000);  // let the canvas paint before the screenshot
   await page.screenshot({ path: `/out/${MODE}-${file.split('/').pop()}.png` });
+  const versioned = await frame.evaluate(() => [...document.scripts].some((x) => /loader\.js\?v=\w+/.test(x.src)));
+  check(versioned, `${file}: assets loaded with a version (cache-busting)`);
   const logo = await frame.evaluate(() => {
     const l = document.querySelector('ecad-viewer').shadowRoot.querySelector('.bottom-left-icon');
     return !!l && getComputedStyle(l).display !== 'none';
@@ -48,6 +50,8 @@ check(sheet.includes('SCH'), `a single schematic opens (tabs: ${[...new Set(shee
 const RP = 'examples/rp2350-minimal/RPI-RP2350A-MINIMAL_R4-S1';
 const rpSheet = await open(`${RP}.kicad_sch`);
 check(rpSheet.includes('SCH'), `example project: schematic opens (tabs: ${[...new Set(rpSheet)].join(' ')})`);
+const rpBoard = await open(`${RP}.kicad_pcb`);
+check(rpBoard.includes('PCB'), `example project: board opens (tabs: ${[...new Set(rpBoard)].join(' ')})`);
 
 if (MODE === 'same-origin') {
   const rp = await open(`${RP}.kicad_pro`);

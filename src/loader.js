@@ -59,9 +59,11 @@
   // The viewer starts its parser as a module worker from /assets/. A sandboxed page (origin "null") may not do that,
   // so fetch the worker (Gitea serves assets with CORS *) and hand the viewer a blob: URL instead.
   var base = document.currentScript.src.replace(/[^/]*$/, "");
+  var version = document.currentScript.src.split("?")[1] || "";  // "v=<build>", passed on to the other files
+  function asset(f) { return base + f + (version ? "?" + version : ""); }
   function patchWorker() {
     if (sameOrigin) return Promise.resolve();
-    return fetch(base + "parser.worker.js").then(function (r) { return r.text(); }).then(function (code) {
+    return fetch(asset("parser.worker.js")).then(function (r) { return r.text(); }).then(function (code) {
       // Drop the trailing ES module export so the bundle also runs as a classic worker (see below).
       code = code.replace(/\bexport\s*\{[^}]*\};?/, "");
       var blobUrl = URL.createObjectURL(new Blob([code], { type: "text/javascript" }));
@@ -76,7 +78,7 @@
   }
   function loadViewer() {
     var s = document.createElement("script");
-    s.type = "module"; s.src = base + "ecad-viewer.js";
+    s.type = "module"; s.src = asset("ecad-viewer.js");
     document.head.appendChild(s);
   }
 

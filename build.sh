@@ -43,4 +43,6 @@ cp "$DIR/src/render.sh" "$DIR/dist/kicad-viewer/"
 cp "$SRC/LICENSE.md" "$OUT/LICENSE-ecad-viewer.md"
 cp "$DIR/LICENSE" "$OUT/LICENSE-gitea-kicad-viewer"
 echo "ecad-viewer $ECAD_COMMIT" > "$OUT/VERSION"
+# Short hash of all assets: render.sh puts it in the asset URLs (cache-busting after an update).
+(cd "$OUT" && cat ecad-viewer.js parser.worker.js glyph-full.js loader.js loader.css) | sha256sum | cut -c1-12 > "$DIR/dist/kicad-viewer/VERSION"
 echo "built: $(du -sh "$OUT" | cut -f1) in dist/"
