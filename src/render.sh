@@ -13,7 +13,11 @@ A=${KICAD_VIEWER_ASSETS:-/assets/kicad-viewer}
 # new files after an update instead of using their cached copy (Gitea lets them cache /assets/ for hours).
 V=$(cat "$(dirname "$0")/VERSION" 2>/dev/null || echo 0)
 
-printf '<!doctype html><html><head><meta charset="utf-8"><link rel="stylesheet" href="%s/loader.css?v=%s"></head><body>\n' "$A" "$V"
+printf '<!doctype html><html><head><meta charset="utf-8"><link rel="stylesheet" href="%s/loader.css?v=%s">\n' "$A" "$V"
+# ecad-viewer loads the 3D view, three.js and the full glyph set with bare module names; map them to our assets.
+printf '<script type="importmap">{"imports":{"three":"%s/three/three.module.js?v=%s","three/addons/":"%s/three/addons/","3d-viewer":"%s/3d-viewer.js?v=%s","glyph-full":"%s/glyph-full.js?v=%s"}}</script>\n' \
+  "$A" "$V" "$A" "$A" "$V" "$A" "$V"
+printf '</head><body>\n'
 printf '<script id="kv-config" type="application/json">{"src":"%s","raw":"%s"}</script>\n' "$GITEA_PREFIX_SRC" "$GITEA_PREFIX_RAW"
 printf '<script id="kv-inline" type="text/plain">'
 base64 | tr -d '\n'

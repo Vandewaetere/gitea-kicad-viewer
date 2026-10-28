@@ -3,7 +3,8 @@
 # gitea-kicad-viewer — build
 # ==========================================================================================================================
 # Builds ecad-viewer (Huaqiu Electronics, MIT) at a fixed commit and puts everything Gitea needs in dist/:
-#   dist/public/assets/kicad-viewer/   ecad-viewer.js, parser.worker.js, glyph-full.js, loader.js, loader.css, licenses
+#   dist/public/assets/kicad-viewer/   ecad-viewer.js, parser.worker.js, glyph-full.js, 3d-viewer.js, three/, loader.js,
+#                                      loader.css, licenses
 #   dist/kicad-viewer/render.sh        the render command Gitea calls
 # The build runs in the official Node.js image, so nothing is installed on the host. Needs Docker and git.
 # ==========================================================================================================================
@@ -30,19 +31,25 @@ docker run --rm -v "$SRC:/src" -w /src "$NODE" sh -c '
   npm ci --no-audit --no-fund --loglevel=error
   npm run -s build -w @huaqiu/kicad-sexpr-parser
   npm run -s build -w @huaqiu/ecad-renderer
-  cd packages/ecad-viewer-app && npm run -s build:no-check && npm run -s build:glyph
+  cd packages/ecad-viewer-app && npm run -s build:no-check && npm run -s build:glyph && npm run -s build:3d
   chown -R '"$(id -u):$(id -g)"' /src'
 
 # Collect the output. Empty the output folders instead of removing them: Gitea may have them bind-mounted, and a mount
 # of a removed folder keeps pointing at the old, now empty one.
 mkdir -p "$OUT" "$DIR/dist/kicad-viewer"
 find "$OUT" "$DIR/dist/kicad-viewer" -mindepth 1 -delete
-for f in ecad-viewer.js parser.worker.js glyph-full.js; do cp "$SRC/packages/ecad-viewer-app/build/$f" "$OUT/"; done
+for f in ecad-viewer.js parser.worker.js glyph-full.js 3d-viewer.js; do cp "$SRC/packages/ecad-viewer-app/build/$f" "$OUT/"; done
+# three.js (r161, MIT, shipped with ecad-viewer) for the 3D view: the core and the add-ons, without the big libraries
+# the viewer does not use (Draco/Basis decoders, Rhino, Ammo).
+mkdir -p "$OUT/three"
+cp "$SRC/packages/ecad-viewer-app/static/three/three.module.js" "$OUT/three/"
+cp -r "$SRC/packages/ecad-viewer-app/static/three/addons" "$OUT/three/"
+rm -rf "$OUT/three/addons/libs/draco" "$OUT/three/addons/libs/basis" "$OUT/three/addons/libs/rhino3dm" "$OUT/three/addons/libs/ammo.wasm."*
 cp "$DIR/src/loader.js" "$DIR/src/loader.css" "$OUT/"
 cp "$DIR/src/render.sh" "$DIR/dist/kicad-viewer/"
 cp "$SRC/LICENSE.md" "$OUT/LICENSE-ecad-viewer.md"
 cp "$DIR/LICENSE" "$OUT/LICENSE-gitea-kicad-viewer"
 echo "ecad-viewer $ECAD_COMMIT" > "$OUT/VERSION"
 # Short hash of all assets: render.sh puts it in the asset URLs (cache-busting after an update).
-(cd "$OUT" && cat ecad-viewer.js parser.worker.js glyph-full.js loader.js loader.css) | sha256sum | cut -c1-12 > "$DIR/dist/kicad-viewer/VERSION"
+(cd "$OUT" && cat ecad-viewer.js parser.worker.js glyph-full.js 3d-viewer.js loader.js loader.css) | sha256sum | cut -c1-12 > "$DIR/dist/kicad-viewer/VERSION"
 echo "built: $(du -sh "$OUT" | cut -f1) in dist/"

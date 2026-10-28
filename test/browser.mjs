@@ -41,7 +41,8 @@ async function open(file) {
   check(!logo, `${file}: no ecad-viewer logo in the corner`);
   return frame.evaluate(() => [...document.querySelector('ecad-viewer').shadowRoot.querySelectorAll('*')]
     .map((e) => e.shadowRoot ? [...e.shadowRoot.querySelectorAll('*')] : []).flat()
-    .map((e) => e.textContent.trim()).filter((t) => ['SCH', 'PCB', 'BOM'].includes(t)));
+    .filter((e) => e.offsetParent !== null || e.tagName !== 'TAB-BUTTON')
+    .map((e) => e.textContent.trim()).filter((t) => ['SCH', 'PCB', '3D', 'BOM'].includes(t)));
 }
 
 const sheet = await open('muxdata.kicad_sch');
@@ -51,11 +52,20 @@ const RP = 'examples/rp2350-minimal/RPI-RP2350A-MINIMAL_R4-S1';
 const rpSheet = await open(`${RP}.kicad_sch`);
 check(rpSheet.includes('SCH'), `example project: schematic opens (tabs: ${[...new Set(rpSheet)].join(' ')})`);
 const rpBoard = await open(`${RP}.kicad_pcb`);
+if (MODE === 'default') check(!rpBoard.includes('3D'), 'example project: no 3D tab without access to the .glb');
 check(rpBoard.includes('PCB'), `example project: board opens (tabs: ${[...new Set(rpBoard)].join(' ')})`);
 
 if (MODE === 'same-origin') {
   const rp = await open(`${RP}.kicad_pro`);
   check(rp.includes('SCH') && rp.includes('PCB'), `example project: whole project opens (tabs: ${[...new Set(rp)].join(' ')})`);
+  // 3D: the example has a .glb next to it; open the 3D tab and wait for the model.
+  const frame = page.frames().find((f) => f.url().includes('/render/'));
+  const loaded3d = new Promise((res) => page.on('console', (m) => { if (m.text().includes('Online3dViewerLoaded')) res(true); }));
+  await frame.locator('tab-button.tab', { hasText: '3D' }).first().click();
+  const ok3d = await Promise.race([loaded3d, new Promise((res) => setTimeout(() => res(false), 60000))]);
+  await page.waitForTimeout(3000);
+  await page.screenshot({ path: `/out/${MODE}-3d.png` });
+  check(ok3d, 'example project: 3D model loads in the 3D tab');
 
   const project = await open('video.kicad_pro');
   check(project.includes('SCH') && project.includes('PCB'), `the whole project opens (tabs: ${[...new Set(project)].join(' ')})`);

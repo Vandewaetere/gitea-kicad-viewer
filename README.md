@@ -2,13 +2,15 @@
 
 **Browse [KiCad](https://www.kicad.org) schematics, PCBs, 3D boards and BOMs right inside [Gitea](https://about.gitea.com).** Click a `.kicad_sch` or `.kicad_pcb` file in a repository and get an interactive viewer instead of a wall of S-expressions. Everything renders in the browser: no external services, no CDN, no KiCad install needed to look at a design.
 
-> **Status:** early version, works with Gitea 28.2 (tested end-to-end). 3D view and releases still to come.
+> **Status:** early version, works with Gitea 28.2 (tested end-to-end). Releases still to come.
 
 ## Features
 
 - Interactive schematic viewer: pan, zoom, symbol properties, hierarchical sheets
 - Interactive PCB viewer: layers on/off, nets, footprints
 - BOM view
+- 3D view of the board, from a `.glb` next to the project (KiCad: *File → Export → GLB*, or
+  `kicad-cli pcb export glb`); without one the 3D tab is hidden
 - Works inside Gitea's own file view through its external renderer: no Gitea patches, no plugin system needed
 - Everything is served by your Gitea: no CDN, no external requests, works for private repositories
 - Works side by side with [gitea-board-badges](https://github.com/Vandewaetere/gitea-board-badges) in the same `$GITEA_CUSTOM`
@@ -22,7 +24,7 @@ loader that makes the viewer work inside Gitea's sandbox.
 | Gitea sandbox | What you see |
 |---|---|
 | default (`allow-scripts …`) | the file you opened (one schematic sheet or one PCB) |
-| with `allow-same-origin` | the whole project in that folder: all sheets, the PCB and the BOM, in tabs |
+| with `allow-same-origin` | the whole project in that folder: all sheets, the PCB, the BOM and (with a `.glb`) 3D, in tabs |
 
 `allow-same-origin` lets the viewer read the other files of the project with the visitor's own session. Only add it
 if you trust the render command (this one only reads files, it never puts their content into the page as HTML).
@@ -54,6 +56,9 @@ Restart Gitea. With the official Docker image `$GITEA_CUSTOM` is `/data/gitea`. 
 Large boards: Gitea does not render files above `[ui] MAX_DISPLAY_FILE_SIZE` (default 8 MiB). Raise it if your
 `.kicad_pcb` files are bigger. Opening the `.kicad_pro` with `allow-same-origin` loads the PCB directly and is not limited.
 
+The 3D view needs `allow-same-origin` (it reads the `.glb` next to the project) and the `.glb` must be uncompressed or
+use meshopt compression: Draco/KTX2 decoders would be fetched from a CDN, which the viewer does not do.
+
 ## Example project
 
 [`examples/rp2350-minimal/`](examples/rp2350-minimal/) holds a small, validated, MIT-licensed KiCad 10 project to try
@@ -77,6 +82,7 @@ This project is built on the work of others, thank you:
 - **[ecad-viewer](https://github.com/Huaqiu-Electronics/ecad-viewer)** by **Huaqiu Electronics** (MIT): the viewer this project is based on.
 - **[KiCanvas](https://github.com/theacodes/kicanvas)** by **Thea Flowers** (MIT): the KiCad web viewer ecad-viewer itself is based on.
 - **[Raspberry Pi Ltd](https://www.raspberrypi.com)** (MIT): the example project in `examples/rp2350-minimal/`.
+- **[three.js](https://threejs.org)** (MIT): the 3D view (r161, as shipped with ecad-viewer).
 - **[three-gltf-viewer](https://github.com/donmccurdy/three-gltf-viewer)** by **Don McCurdy** (MIT): used by ecad-viewer for the 3D view.
 
 Inside Gitea the loader hides ecad-viewer's logo in the corner of the viewer; the credits are here instead. Their

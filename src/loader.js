@@ -23,6 +23,7 @@
   // render URL ends in the file name.
   var name = decodeURIComponent(location.pathname.slice(location.pathname.lastIndexOf("/") + 1));
   var viewer = document.createElement("ecad-viewer");
+  var has3d = false;
 
   function addSource(url) { var s = document.createElement("ecad-source"); s.setAttribute("src", url); viewer.appendChild(s); }
   function inline() {
@@ -53,6 +54,16 @@
       if (dir === null) throw new Error("file not found in tree-list");
       var files = paths.filter(function (p) { return dirname(p) === dir && /\.(kicad_sch|kicad_pcb|kicad_pro)$/.test(p); });
       files.forEach(function (p) { addSource(cfg.raw + "/" + encodeURIComponent(basename(p))); });
+      // 3D: a .glb next to the project (KiCad: File > Export > GLB). Prefer the one named like the board/project.
+      var stem = name.replace(/\.kicad_(sch|pcb|pro)$/, "");
+      var glbs = paths.filter(function (p) { return dirname(p) === dir && /\.glb$/i.test(p); });
+      var glb = glbs.filter(function (p) { return basename(p).replace(/\.glb$/i, "") === stem; })[0] || glbs[0];
+      if (glb) {
+        has3d = true;
+        var g = document.createElement("ecad-3d-source");
+        g.setAttribute("src", cfg.raw + "/" + encodeURIComponent(basename(glb)));
+        viewer.appendChild(g);
+      }
     });
   }
 
@@ -83,6 +94,22 @@
   }
 
   var files = sameOrigin ? project().catch(function () { inline(); }) : Promise.resolve(inline());
+  // Without a .glb, ecad-viewer would ask its own conversion server (which Gitea doesn't have) for a 3D model and show
+  // a spinner forever. Hide the 3D tab instead. The tab buttons live in nested shadow roots, so search through them.
+  function hide3dTab() {
+    var found = false;
+    (function walk(root) {
+      root.querySelectorAll("*").forEach(function (el) {
+        if (el.tagName === "TAB-BUTTON" && el.classList.contains("tab") && el.textContent.trim() === "3D") {
+          el.style.display = "none";
+          found = true;
+        }
+        if (el.shadowRoot) walk(el.shadowRoot);
+      });
+    })(viewer.shadowRoot || viewer);
+    return found;
+  }
+
   // ecad-viewer puts its maker's logo (a link) in the bottom-left corner; we don't show it inside Gitea.
   // The credits are in the README. The logo lives in the viewer's shadow DOM, so add a style rule there.
   function hideLogo() {
@@ -106,5 +133,13 @@
         new MutationObserver(hideLogo).observe(viewer.shadowRoot, { childList: true });
       }
     }, 50);
+    if (!has3d) {
+      // The tab bar is built (and rebuilt) after the project has loaded; keep hiding the 3D tab for a while.
+      var tries = 0;
+      var tabTimer = setInterval(function () {
+        hide3dTab();
+        if (++tries > 600) clearInterval(tabTimer);
+      }, 100);
+    }
   });
 })();
