@@ -1,5 +1,5 @@
 // gitea-kicad-viewer loader: runs inside Gitea's render iframe and then starts ecad-viewer.js.
-// https://github.com/Vandewaetere/gitea-kicad-viewer — MIT
+// Version 1.0.0 — https://github.com/Vandewaetere/gitea-kicad-viewer (changes: CHANGELOG.md) — MIT
 (function () {
   "use strict";
 

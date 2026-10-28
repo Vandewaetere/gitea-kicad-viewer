@@ -45,7 +45,7 @@ async function open(file) {
     .map((e) => e.textContent.trim()).filter((t) => ['SCH', 'PCB', '3D', 'BOM'].includes(t)));
 }
 
-const sheet = await open('muxdata.kicad_sch');
+const sheet = await open('video/muxdata.kicad_sch');
 check(sheet.includes('SCH'), `a single schematic opens (tabs: ${[...new Set(sheet)].join(' ')})`);
 
 const RP = 'examples/rp2350-minimal/RPI-RP2350A-MINIMAL_R4-S1';
@@ -58,16 +58,30 @@ check(rpBoard.includes('PCB'), `example project: board opens (tabs: ${[...new Se
 if (MODE === 'same-origin') {
   const rp = await open(`${RP}.kicad_pro`);
   check(rp.includes('SCH') && rp.includes('PCB'), `example project: whole project opens (tabs: ${[...new Set(rp)].join(' ')})`);
-  // 3D: the example has a .glb next to it; open the 3D tab and wait for the model.
+  // Screenshots for the README: the example project in every tab (only the viewer part of the page). 3D comes last:
+  // once its (software) WebGL loop runs, page screenshots get very slow.
   const frame = page.frames().find((f) => f.url().includes('/render/'));
+  const shot = async (name) => {
+    const box = await page.locator('iframe').boundingBox();
+    await page.screenshot({ path: `/out/screenshot-${name}.png`, clip: { x: box.x, y: box.y, width: box.width, height: Math.min(box.height, 640) } });
+  };
+  await page.screenshot({ path: '/out/screenshot-gitea.png' });
+  await shot('schematic');
+  for (const [tab, name] of [['PCB', 'pcb'], ['BOM', 'bom']]) {
+    await frame.locator('tab-button.tab', { hasText: tab }).first().click();
+    await page.waitForTimeout(3000);
+    await shot(name);
+  }
+
+  // 3D: the example has a .glb next to it; open the 3D tab and wait for the model.
   const loaded3d = new Promise((res) => page.on('console', (m) => { if (m.text().includes('Online3dViewerLoaded')) res(true); }));
   await frame.locator('tab-button.tab', { hasText: '3D' }).first().click();
   const ok3d = await Promise.race([loaded3d, new Promise((res) => setTimeout(() => res(false), 60000))]);
   await page.waitForTimeout(3000);
-  await page.screenshot({ path: `/out/${MODE}-3d.png` });
+  await shot('3d');
   check(ok3d, 'example project: 3D model loads in the 3D tab');
 
-  const project = await open('video.kicad_pro');
+  const project = await open('video/video.kicad_pro');
   check(project.includes('SCH') && project.includes('PCB'), `the whole project opens (tabs: ${[...new Set(project)].join(' ')})`);
 }
 

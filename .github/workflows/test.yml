@@ -1,0 +1,37 @@
+# Builds the viewer and runs the end-to-end test (test/test.sh): a throwaway Gitea in Docker with the viewer and
+# gitea-board-badges, test projects, and checks in a real Chromium. On every push to main and every pull request, and
+# by hand (Actions -> Test -> Run workflow), e.g. to check a new gitea/gitea:latest before upgrading. The screenshots of
+# the run are kept as an artifact named "screenshots".
+name: Test
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  e2e:
+    # Only on GitHub: Gitea Actions also reads .github/workflows, but its runners do not give jobs a Docker daemon.
+    if: github.server_url == 'https://github.com'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build
+        run: ./build.sh
+
+      # As root: test.sh gives the test Gitea's data folder to user id 1000, the user Gitea runs as in its container.
+      - name: End-to-end test
+        run: sudo test/test.sh
+
+      - name: Keep the screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: screenshots
+          path: test/out/

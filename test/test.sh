@@ -23,7 +23,7 @@
 #   ./build.sh && test/test.sh
 #   GITEA_IMAGE=gitea/gitea:<version> test/test.sh   test with another Gitea version
 #   BADGES=/path/to/footer.tmpl test/test.sh          gitea-board-badges to install next to it (default: latest release)
-#   Exit code 0 = all checks passed. Screenshots go to test/out/.
+#   Exit code 0 = all checks passed. Screenshots go to test/out/ (screenshot-*.png are the ones used in the README).
 # ==========================================================================================================================
 set -e
 export PATH=$PATH:/snap/bin
@@ -42,9 +42,12 @@ rm -rf "$WORK" && mkdir -p "$WORK/project" "$WORK/pw" "$DIR/test/out"
 
 # The test project: ecad-viewer's own demo, unpacked from the pinned source.
 python3 -c 'import sys,zipfile; zipfile.ZipFile(sys.argv[1]).extractall(sys.argv[2])' \
-  "$DIR/dist/.src/ecad-viewer/packages/ecad-viewer-app/static/video.zip" "$WORK/project"
+  "$DIR/dist/.src/ecad-viewer/packages/ecad-viewer-app/static/video.zip" "$WORK/project/video"
 # Plus our own example project (examples/), in a sub-folder like in a real repository.
 mkdir -p "$WORK/project/examples" && cp -r "$DIR/examples/rp2350-minimal" "$WORK/project/examples/"
+
+# The release archive, made the same way as .github/workflows/release.yml does.
+tar -czf "$WORK/gitea-kicad-viewer.tar.gz" -C "$DIR/dist" public kicad-viewer
 
 # gitea-board-badges next to it.
 if [ -n "$BADGES" ]; then cp "$BADGES" "$WORK/footer.tmpl"; else
@@ -58,8 +61,8 @@ docker network create --internal "$NET" >/dev/null
 
 run() {  # $1 = label, $2 = RENDER_CONTENT_SANDBOX value ("" = Gitea's default)
   rm -rf "$WORK/data" && mkdir -p "$WORK/data/gitea/templates/custom" "$WORK/data/gitea/public/assets"
-  cp -r "$DIR/dist/public/assets/kicad-viewer" "$WORK/data/gitea/public/assets/"
-  cp -r "$DIR/dist/kicad-viewer" "$WORK/data/"
+  # Installed exactly as the README says: the release archive unpacked into $GITEA_CUSTOM (/data/gitea).
+  tar -xzf "$WORK/gitea-kicad-viewer.tar.gz" -C "$WORK/data/gitea"
   cp "$WORK/footer.tmpl" "$WORK/data/gitea/templates/custom/footer.tmpl"
   chown -R 1000:1000 "$WORK/data"
   M=markup_0X2E_kicad
@@ -67,7 +70,7 @@ run() {  # $1 = label, $2 = RENDER_CONTENT_SANDBOX value ("" = Gitea's default)
     -e GITEA__security__INSTALL_LOCK=true -e GITEA__database__DB_TYPE=sqlite3 -e GITEA__server__DISABLE_SSH=true \
     -e GITEA__server__ROOT_URL="http://$NAME:3000/" \
     -e GITEA__${M}__ENABLED=true -e GITEA__${M}__FILE_EXTENSIONS=.kicad_sch,.kicad_pcb,.kicad_pro \
-    -e GITEA__${M}__RENDER_COMMAND="sh /data/kicad-viewer/render.sh" -e GITEA__${M}__RENDER_CONTENT_MODE=iframe \
+    -e GITEA__${M}__RENDER_COMMAND="sh /data/gitea/kicad-viewer/render.sh" -e GITEA__${M}__RENDER_CONTENT_MODE=iframe \
     ${2:+-e GITEA__${M}__RENDER_CONTENT_SANDBOX="$2"} \
     -v "$WORK/data:/data" -v "$WORK/project:/project:ro" "$IMAGE" >/dev/null
   for i in $(seq 60); do docker exec "$NAME" curl -fsS http://127.0.0.1:3000/api/healthz >/dev/null 2>&1 && break; sleep 2; done
